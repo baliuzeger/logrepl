@@ -2,7 +2,7 @@
 name = "logrepl"
 version = "0.1.0"
 description = ""
-authors = ["bali <balihsu@accudata.com.tw>"]
+authors = ["bali <baluzeger@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
