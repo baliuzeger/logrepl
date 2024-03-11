@@ -99,7 +99,7 @@ def reset_io():
     sys.stdin = sys.__stdin__
     builtins.input = builtin_input # useless for the running repl!!
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('prefix', nargs='?', help="prefix for log file")
     parser.add_argument('-d', '--dir', default='.', help="dir for log file")
