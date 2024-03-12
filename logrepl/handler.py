@@ -89,10 +89,12 @@ def update(prefix=None, new_dir=None):
     handler.set_fname(prefix)
 
 def stop_log():
+    print('logrepl stopped log to file.')
     handler.set_will_log(False)
 
 def start_log():
     handler.set_will_log(True)
+    print('logrepl start log to file.')
 
 def reset_io():
     sys.stdout = sys.__stdout__

@@ -132,3 +132,6 @@ dmypy.json
 #PyCharm files
 .idea/
 data/
+
+# logrepl
+.logrepl
