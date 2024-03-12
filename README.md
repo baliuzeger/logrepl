@@ -39,5 +39,9 @@ dir=logs
 prefix=my_prefix
 ```
 
-note that the command line arguments are prioritized over the settings in `.pylogrepl`. We suggest that specifying `dir` in `.pylogrepl` and `prefix` by command line argument everytime for your need at the moment is a handy approach.
+note that the command line arguments are prioritized over the settings in `.pylogrepl`. We suggest that specifying `dir` in `.pylogrepl` and `prefix` by command line argument is a handy approach.
+
+# Notes
+
+Exceptions ocurred when writing to the log file will not be logged since it'll lead to infinite loop.
 
