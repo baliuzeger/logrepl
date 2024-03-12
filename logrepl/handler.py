@@ -28,9 +28,9 @@ class Handler():
         self.will_log = log_or_not
     
     def get_path(self):
-            if self.log_file is None:
-                raise ValueError('logrepl log_file is None.')
-            return self.log_dir/self.log_file
+        if self.log_file is None:
+            raise ValueError('logrepl log_file is None.')
+        return self.log_dir/self.log_file
     
     def check_dir_write(self, msg):
         if self.will_log:
