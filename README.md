@@ -51,7 +51,7 @@ By executing `pylogrepl`, the module `logrepl` will be loaded to the current nam
 
 **logrepl.update(prefix=None, new_dir=None)**
 
-update new logging dir & new prefix. Logs will be written to a new `prefix_yyyymmddhhmm.log` even no arguments are provided.
+update new logging dir & new prefix. Logs will be written to a new `yyyymmddhhmm.log` even no arguments are provided.
 
 ## start / stop logging to file
 
