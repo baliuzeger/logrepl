@@ -30,6 +30,8 @@ pylogrepl -d logs
 pylogrepl --dir logs
 ```
 
+then the log file will be in the `logs` directory.
+
 ## By .pylogrepl file
 
 You can also sepcify the prefix & the directory by making a `.pylogrepl` in the working directory:
