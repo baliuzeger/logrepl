@@ -6,6 +6,7 @@ from dotenv import dotenv_values
 nm_config_dir = 'dir'
 nm_config_prefix = 'prefix'
 default_dir = '.'
+fname_config = '.pylogrepl'
 
 def main():
     parser = argparse.ArgumentParser()
@@ -13,7 +14,7 @@ def main():
     parser.add_argument('-d', '--dir', help="dir for log file")
     args = parser.parse_args()
 
-    config = dotenv_values(".logrepl")
+    config = dotenv_values(fname_config)
 
     if args.dir is None:
         if nm_config_dir in config:
