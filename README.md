@@ -43,6 +43,32 @@ prefix=my_prefix
 
 note that the command line arguments are prioritized over the settings in `.pylogrepl`. We suggest that specifying `dir` in `.pylogrepl` and `prefix` by command line argument is a handy approach.
 
+# APIs
+
+By executing `pylogrepl`, the module `logrepl` will be loaded to the current namespace.
+
+## update logging dir / file
+
+**logrepl.update(prefix=None, new_dir=None)**
+
+update new logging dir & new prefix. Logs will be written to a new `prefix_yyyymmddhhmm.log` even no arguments are provided.
+
+## start / stop logging to file
+
+**logrepl.start_log()**
+
+start logging to the file.
+
+**logrepl.stop_log()**
+
+stop logging to the file.
+
+## Handler
+
+**logrepl.repl_handler**
+
+the `Handler` object that controls the logging behavior of the repl.
+
 # Notes
 
 Exceptions ocurred when writing to the log file will not be logged since it'll lead to infinite loop.
