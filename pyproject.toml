@@ -8,8 +8,8 @@ repository = "https://github.com/baliuzeger/logrepl"
 keywords = ["repl", "log", "logging"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-python-dotenv = "^1.0.1"
+python = "^3.6"
+python-dotenv = "*"
 
 [tool.poetry.scripts]
 pylogrepl = 'logrepl.run:main'
