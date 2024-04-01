@@ -45,7 +45,7 @@ def decorate_log_out(fn):
         try:
             handler.check_dir_write(args[0])
         except Exception as e:
-            sys.__stderr__.write(f"logrepl output error: {e}")
+            sys.__stderr__.write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.")
         finally:
             return fn(*args, **kwargs)
     return new_func
@@ -56,7 +56,7 @@ def decorate_log_in(fn):
         try:
             handler.check_dir_write(s)
         except Exception as e:
-            sys.__stderr__.write(f"logrepl read error: {e}")
+            sys.__stderr__.write(f"logrepl got error <{e}> when writting in msg <{s}>.")
         finally:
             return s
     return new_func
@@ -70,7 +70,7 @@ def gen_logged_input():
         try:
             handler.check_dir_write(f'{prompt}{got}\n')
         except Exception as e:
-            sys.__stderr__.write(f"logrepl input error: {e}")
+            sys.__stderr__.write(f"logrepl got error <{e}> when writting input msg <{prompt}{got}>.")
         finally:
             return got
     
