@@ -5,6 +5,12 @@ import readline
 import builtins
 from pathlib import Path
 
+builtin_read = sys.__stdin__.read
+builtin_readline = sys.__stdin__.readline
+builtin_input = builtins.input
+builtin_stdout_write = sys.__stdout__.write
+builtin_stderr_write = sys.__stderr__.write
+
 def gen_log_fname(prefix=None):
     t_tag = datetime.now().strftime("%Y%m%d%H%M")
     fname = f"{t_tag}.log"
@@ -37,15 +43,26 @@ class Handler():
             self.log_dir.mkdir(exist_ok=True, parents=True)
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
+                # breakpoint()
+                raise Exception('dead!!!!')
 
 handler = Handler()
+
+# def vanila_write_err(e, original_msg=None):
+#     if original_msg is None:
+#         msg = str(e)
+#     else:
+#         msg = f"error:\n{e}\noriginal msg:\n{original_msg}"
+#     builtin_stderr_write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.\n")
 
 def decorate_log_out(fn):
     def new_func(*args, **kwargs):
         try:
             handler.check_dir_write(args[0])
+            # handler.check_dir_write(f'@@ {args[0]}\n')
+            # handler.check_dir_write(f'!!will call {str(fn)}\n')
         except Exception as e:
-            sys.__stderr__.write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.")
+            builtin_stderr_write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.\n")
         finally:
             return fn(*args, **kwargs)
     return new_func
@@ -56,32 +73,26 @@ def decorate_log_in(fn):
         try:
             handler.check_dir_write(s)
         except Exception as e:
-            sys.__stderr__.write(f"logrepl got error <{e}> when writting in msg <{s}>.")
+            builtin_stderr_write(f"logrepl got error <{e}> when writting stdin msg <{s}>.\n")
         finally:
             return s
     return new_func
 
-builtin_input = builtins.input
-
-def gen_logged_input():
-
-    def logged_input(prompt=''):
-        got = builtin_input(prompt)
-        try:
-            handler.check_dir_write(f'{prompt}{got}\n')
-        except Exception as e:
-            sys.__stderr__.write(f"logrepl got error <{e}> when writting input msg <{prompt}{got}>.")
-        finally:
-            return got
-    
-    return logged_input
+def logged_input(prompt=''):
+    got = builtin_input(prompt)
+    try:
+        handler.check_dir_write(f'{prompt}{got}\n')
+    except Exception as e:
+        builtin_stderr_write(f"logrepl got error <{e}> when writting input msg <{prompt}{got}>.\n")
+    finally:
+        return got
 
 def set_io():
-    sys.stdout.write = decorate_log_out(sys.__stdout__.write)
-    sys.stderr.write = decorate_log_out(sys.__stderr__.write)
-    sys.stdin.read = decorate_log_in(sys.__stdin__.read)
-    sys.stdin.readline = decorate_log_in(sys.__stdin__.readline)
-    builtins.input = gen_logged_input()
+    sys.stdout.write = decorate_log_out(builtin_stdout_write)
+    sys.stderr.write = decorate_log_out(builtin_stderr_write)
+    sys.stdin.read = decorate_log_in(builtin_read)
+    sys.stdin.readline = decorate_log_in(builtin_readline)
+    builtins.input = logged_input
 
 def update(prefix=None, new_dir=None):
     if not new_dir is None:
@@ -97,7 +108,8 @@ def start_log():
     print('logrepl start log to file.')
 
 def reset_io():
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
-    sys.stdin = sys.__stdin__
+    sys.stdout.write = builtin_stdout_write
+    sys.stderr.write = builtin_stderr_write
+    sys.stdin.read = builtin_read
+    sys.stdin.readline = builtin_readline
     builtins.input = builtin_input # useless for the running repl!!
