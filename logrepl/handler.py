@@ -4,6 +4,9 @@ import sys
 import readline
 import builtins
 from pathlib import Path
+import asyncio
+import time
+from contextlib import asynccontextmanager
 
 builtin_read = sys.__stdin__.read
 builtin_readline = sys.__stdin__.readline
@@ -19,13 +22,26 @@ def gen_log_fname(prefix=None):
     return fname
 
 class Handler():
-    def __init__(self):
-        self.log_dir = Path('.')
-        self.log_file = None
-        self.will_log = False
+    def __init__(
+        self,
+        log_dir=Path('.'),
+        log_file=None,
+        will_log=True,
+        err_acc_time=0.5
+    ):
 
-    def set_dir(self, new_dir):
+        self.log_dir = log_dir
+        self.log_file = log_file
+        self.will_log = will_log
+
+        self.err_acc_time = err_acc_time
+        self.last_err_time = None
+        self.errors = set()
+        self.err_task = None
+
+    def set_dir(self, new_dir, prefix=None):
         self.log_dir = Path(new_dir)
+        self.log_file = gen_log_fname(prefix)
 
     def set_fname(self, prefix=None):
         self.log_file = gen_log_fname(prefix)
@@ -46,21 +62,32 @@ class Handler():
                 # breakpoint()
                 raise Exception('dead!!!!')
 
-handler = Handler()
+    async def show_err(self):
 
-# def vanila_write_err(e, original_msg=None):
-#     if original_msg is None:
-#         msg = str(e)
-#     else:
-#         msg = f"error:\n{e}\noriginal msg:\n{original_msg}"
-#     builtin_stderr_write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.\n")
+        while time.time() - self.last_err_time < self.err_acc_time:
+            await asyncio.sleep(self.err_acc_time)
+
+        for err in self.errors:
+            builtin_stderr_write(err)
+
+        self.errors = set()
+
+    def add_err(self, err):
+
+        self.last_err_time = time.time()
+        self.errors.add(err)
+
+        if self.err_task is None or self.err_task.done():
+            self.err_task = asyncio.create_task(self.show_err())
+    
+    async def exit(self):
+        if not self.err_task is None and not self.err_task.done():
+            await self.err_task
 
 def decorate_log_out(fn):
     def new_func(*args, **kwargs):
         try:
             handler.check_dir_write(args[0])
-            # handler.check_dir_write(f'@@ {args[0]}\n')
-            # handler.check_dir_write(f'!!will call {str(fn)}\n')
         except Exception as e:
             builtin_stderr_write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.\n")
         finally:
