@@ -24,10 +24,10 @@ def gen_log_fname(prefix=None):
 class Handler():
     def __init__(
         self,
-        log_dir=Path('.'),
         prefix=None,
+        log_dir=Path('.'),
+        err_acc_time=0.5,
         will_log=True,
-        err_acc_time=0.5
     ):
 
         self.set_dir(log_dir, prefix)
@@ -140,3 +140,16 @@ class Handler():
         sys.stdin.read = builtin_read
         sys.stdin.readline = builtin_readline
         builtins.input = builtin_input # useless for the running repl!!
+    
+@asynccontextmanager
+async def log_handler(
+    prefix=None,
+    log_dir=Path('.'),
+    err_acc_time=0.5,
+    will_log=True,
+):
+    hd = Handler(prefix, log_dir, err_acc_time, will_log)
+    try:
+        yield hd
+    finally:
+        await hd.exit()
