@@ -25,13 +25,12 @@ class Handler():
     def __init__(
         self,
         log_dir=Path('.'),
-        log_file=None,
+        prefix=None,
         will_log=True,
         err_acc_time=0.5
     ):
 
-        self.log_dir = log_dir
-        self.log_file = log_file
+        self.set_dir(log_dir, prefix)
         self.will_log = will_log
 
         self.err_acc_time = err_acc_time
@@ -39,8 +38,8 @@ class Handler():
         self.errors = set()
         self.err_task = None
 
-    def set_dir(self, new_dir, prefix=None):
-        self.log_dir = Path(new_dir)
+    def set_dir(self, log_dir, prefix=None):
+        self.log_dir = Path(log_dir)
         self.log_file = gen_log_fname(prefix)
 
     def set_fname(self, prefix=None):
@@ -60,15 +59,58 @@ class Handler():
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
                 # breakpoint()
-                raise Exception('dead!!!!')
+                # raise Exception('dead!!!!')
+
+    def decorate_log_out(self, fn):
+        def new_func(*args, **kwargs):
+            try:
+                self.check_dir_write(args[0])
+            except Exception as e:
+                self.add_err(str(e))
+            finally:
+                return fn(*args, **kwargs)
+        return new_func
+
+    def decorate_log_in(self, fn):
+        def new_func(*args, **kwargs):
+            s = fn(*args, **kwargs)
+            try:
+                self.check_dir_write(s)
+            except Exception as e:
+                self.add_err(str(e))
+            finally:
+                return s
+        return new_func
+
+    def gen_logged_input(self):
+
+        def logged_input(prompt=''):
+            got = builtin_input(prompt)
+            try:
+                self.check_dir_write(f'{prompt}{got}\n')
+            except Exception as e:
+                self.add_err(str(e))
+            finally:
+                return got
+        
+        return logged_input
+
+    def set_io(self):
+        sys.stdout.write = self.decorate_log_out(builtin_stdout_write)
+        sys.stderr.write = self.decorate_log_out(builtin_stderr_write)
+        sys.stdin.read = self.decorate_log_in(builtin_read)
+        sys.stdin.readline = self.decorate_log_in(builtin_readline)
+        builtins.input = self.gen_logged_input()
 
     async def show_err(self):
 
         while time.time() - self.last_err_time < self.err_acc_time:
             await asyncio.sleep(self.err_acc_time)
 
+        builtin_stderr_write('logrepl got errors (ignore the duplicated ones):\n')
+
         for err in self.errors:
-            builtin_stderr_write(err)
+            builtin_stderr_write(f'{err}\n')
 
         self.errors = set()
 
@@ -84,59 +126,17 @@ class Handler():
         if not self.err_task is None and not self.err_task.done():
             await self.err_task
 
-def decorate_log_out(fn):
-    def new_func(*args, **kwargs):
-        try:
-            handler.check_dir_write(args[0])
-        except Exception as e:
-            builtin_stderr_write(f"logrepl got error <{e}> when writing output msg <{args[0]}>.\n")
-        finally:
-            return fn(*args, **kwargs)
-    return new_func
+    def stop_log(self):
+        print('logrepl stopped log to file.')
+        self.set_will_log(False)
 
-def decorate_log_in(fn):
-    def new_func(*args, **kwargs):
-        s = fn(*args, **kwargs)
-        try:
-            handler.check_dir_write(s)
-        except Exception as e:
-            builtin_stderr_write(f"logrepl got error <{e}> when writting stdin msg <{s}>.\n")
-        finally:
-            return s
-    return new_func
+    def start_log(self):
+        self.set_will_log(True)
+        print('logrepl start log to file.')
 
-def logged_input(prompt=''):
-    got = builtin_input(prompt)
-    try:
-        handler.check_dir_write(f'{prompt}{got}\n')
-    except Exception as e:
-        builtin_stderr_write(f"logrepl got error <{e}> when writting input msg <{prompt}{got}>.\n")
-    finally:
-        return got
-
-def set_io():
-    sys.stdout.write = decorate_log_out(builtin_stdout_write)
-    sys.stderr.write = decorate_log_out(builtin_stderr_write)
-    sys.stdin.read = decorate_log_in(builtin_read)
-    sys.stdin.readline = decorate_log_in(builtin_readline)
-    builtins.input = logged_input
-
-def update(prefix=None, new_dir=None):
-    if not new_dir is None:
-        handler.set_dir(new_dir)
-    handler.set_fname(prefix)
-
-def stop_log():
-    print('logrepl stopped log to file.')
-    handler.set_will_log(False)
-
-def start_log():
-    handler.set_will_log(True)
-    print('logrepl start log to file.')
-
-def reset_io():
-    sys.stdout.write = builtin_stdout_write
-    sys.stderr.write = builtin_stderr_write
-    sys.stdin.read = builtin_read
-    sys.stdin.readline = builtin_readline
-    builtins.input = builtin_input # useless for the running repl!!
+    def reset_io():
+        sys.stdout.write = builtin_stdout_write
+        sys.stderr.write = builtin_stderr_write
+        sys.stdin.read = builtin_read
+        sys.stdin.readline = builtin_readline
+        builtins.input = builtin_input # useless for the running repl!!
