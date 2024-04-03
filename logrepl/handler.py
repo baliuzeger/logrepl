@@ -8,6 +8,13 @@ import asyncio
 import time
 from contextlib import asynccontextmanager
 from io import TextIOWrapper
+from dotenv import dotenv_values
+
+nm_config_dir = 'dir'
+nm_config_prefix = 'prefix'
+nm_config_err_acc_time = 'err_acc_time'
+fname_config = '.pylogrepl'
+default_dir = '.'
 
 # builtin_read = sys.__stdin__.read
 # builtin_readline = sys.__stdin__.readline
@@ -51,15 +58,18 @@ class LogInWrapper(TextIOWrapper):
         self.readline = decorate(self.readline_fn)
 
 class Handler():
+
     def __init__(
         self,
+        log_dir='.',
         prefix=None,
-        log_dir=Path('.'),
         err_acc_time=0.5,
         will_log=True,
     ):
 
-        self.set_dir(log_dir, prefix)
+        self.log_dir = Path(log_dir)
+        self.prefix = prefix
+        self.update_suffix()
         self.will_log = will_log
 
         self.err_acc_time = err_acc_time
@@ -67,12 +77,36 @@ class Handler():
         self.errors = set()
         self.err_task = None
 
-    def set_dir(self, log_dir, prefix=None):
-        self.log_dir = Path(log_dir)
-        self.log_file = gen_log_fname(prefix)
+    @classmethod
+    def from_env(
+        cls,
+        log_dir=None,
+        prefix=None,
+        err_acc_time=None,
+    ):
+        config = dotenv_values(fname_config)
 
-    def set_fname(self, prefix=None):
-        self.log_file = gen_log_fname(prefix)
+        if log_dir is None and nm_config_dir in config:
+            log_dir = config[nm_config_dir]
+
+        if prefix is None and nm_config_prefix in config:
+            prefix = config[nm_config_prefix]
+
+        if prefix is None and nm_config_err_acc_time in config:
+            err_acc_time = config[nm_config_err_acc_time]
+
+        return cls(log_dir, prefix, err_acc_time, True)
+
+    def set_dir(self, log_dir):
+        self.log_dir = Path(log_dir)
+        self.update_suffix(self)
+
+    def set_prefix(self, prefix):
+        self.prefix = prefix
+        self.update_suffix()
+
+    def update_suffix(self):
+        self.log_file = gen_log_fname(self.prefix)
 
     def set_will_log(self, log_or_not):
         self.will_log = log_or_not
@@ -171,12 +205,12 @@ class Handler():
     
 @asynccontextmanager
 async def log_handler(
+    log_dir=None,
     prefix=None,
-    log_dir=Path('.'),
-    err_acc_time=0.5,
+    err_acc_time=None,
     will_log=True,
 ):
-    hd = Handler(prefix, log_dir, err_acc_time, will_log)
+    hd = Handler.from_env(log_dir, prefix, err_acc_time, will_log)
     try:
         yield hd
     finally:
