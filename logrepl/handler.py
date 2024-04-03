@@ -7,11 +7,12 @@ from pathlib import Path
 import asyncio
 import time
 from contextlib import asynccontextmanager
+from io import TextIOWrapper
 
-builtin_read = sys.__stdin__.read
-builtin_readline = sys.__stdin__.readline
+# builtin_read = sys.__stdin__.read
+# builtin_readline = sys.__stdin__.readline
 builtin_input = builtins.input
-builtin_stdout_write = sys.__stdout__.write
+# builtin_stdout_write = sys.__stdout__.write
 builtin_stderr_write = sys.__stderr__.write
 
 def gen_log_fname(prefix=None):
@@ -20,6 +21,34 @@ def gen_log_fname(prefix=None):
     if not prefix is None:
         fname = f"{prefix}_{fname}"
     return fname
+
+class LogOutWrapper(TextIOWrapper):
+    def __init__(self, ref: TextIOWrapper, decorate):
+        super(LogOutWrapper, self).__init__(
+            ref.buffer,
+            encoding=ref.encoding,
+            errors=ref.errors,
+            line_buffering=ref.line_buffering,
+            write_through=ref.write_through
+            # newline use default
+        )
+        self.write_fn = ref.write
+        self.write = decorate(self.write_fn)
+
+class LogInWrapper(TextIOWrapper):
+    def __init__(self, ref: TextIOWrapper, decorate):
+        super(LogOutWrapper, self).__init__(
+            ref.buffer,
+            encoding=ref.encoding,
+            errors=ref.errors,
+            line_buffering=ref.line_buffering,
+            write_through=ref.write_through
+            # newline use default
+        )
+        self.read_fn = ref.read
+        self.readline_fn = ref.readline
+        self.read = decorate(self.read_fn)
+        self.readline = decorate(self.readline_fn)
 
 class Handler():
     def __init__(
@@ -96,10 +125,9 @@ class Handler():
         return logged_input
 
     def set_io(self):
-        sys.stdout.write = self.decorate_log_out(builtin_stdout_write)
-        sys.stderr.write = self.decorate_log_out(builtin_stderr_write)
-        sys.stdin.read = self.decorate_log_in(builtin_read)
-        sys.stdin.readline = self.decorate_log_in(builtin_readline)
+        sys.stdout = LogOutWrapper(sys.__stdout__, self.decorate_log_out)
+        sys.stderr = LogOutWrapper(sys.__stderr__, self.decorate_log_out)
+        sys.stdin = LogInWrapper(sys.__stdin__, self.decorate_log_in)
         builtins.input = self.gen_logged_input()
 
     async def show_err(self):
@@ -125,6 +153,7 @@ class Handler():
     async def exit(self):
         if not self.err_task is None and not self.err_task.done():
             await self.err_task
+        self.reset_io()
 
     def stop_log(self):
         print('logrepl stopped log to file.')
@@ -135,10 +164,9 @@ class Handler():
         print('logrepl start log to file.')
 
     def reset_io():
-        sys.stdout.write = builtin_stdout_write
-        sys.stderr.write = builtin_stderr_write
-        sys.stdin.read = builtin_read
-        sys.stdin.readline = builtin_readline
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+        sys.stdin = sys.__stdin__
         builtins.input = builtin_input # useless for the running repl!!
     
 @asynccontextmanager
