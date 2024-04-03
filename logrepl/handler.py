@@ -4,20 +4,21 @@ import sys
 import readline
 import builtins
 from pathlib import Path
-import asyncio
 import time
-from contextlib import asynccontextmanager
+from contextlib import contextmanager
 from io import TextIOWrapper
+from threading import Thread
 from dotenv import dotenv_values
+from functools import reduce
 
 nm_config_dir = 'dir'
 nm_config_prefix = 'prefix'
 nm_config_err_acc_time = 'err_acc_time'
 fname_config = '.pylogrepl'
 default_dir = '.'
-default_err_acc_time = 0.5
+default_err_acc_time = 1.
 
-is_debug = True
+is_debug = False
 
 def debug_write(msg):
     if is_debug:
@@ -83,7 +84,7 @@ class Handler():
         self.err_acc_time = err_acc_time
         self.last_err_time = None
         self.errors = set()
-        self.err_task = None
+        self.err_thread = None
 
     @classmethod
     def from_env(
@@ -135,8 +136,6 @@ class Handler():
             self.log_dir.mkdir(exist_ok=True, parents=True)
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
-                # breakpoint()
-                raise Exception('dead!!!!')
 
     def decorate_log_out(self, fn):
         def new_func(*args, **kwargs):
@@ -178,18 +177,20 @@ class Handler():
         sys.stdin = LogInWrapper(sys.__stdin__, self.decorate_log_in)
         builtins.input = self.gen_logged_input()
 
-    async def show_err(self):
+    def show_err(self):
         try:
             time_diff = time.time() - self.last_err_time
-            debug_write(f'time diff: {time_diff}')
             while time_diff < self.err_acc_time:
-                await asyncio.sleep(self.err_acc_time)
+                time.sleep(self.err_acc_time)
                 time_diff = time.time() - self.last_err_time
-                debug_write(f'while time diff: {time_diff}')
 
-            builtin_stderr_write('logrepl got errors (ignore the duplicated ones):\n')
-            for err in self.errors:
-                builtin_stderr_write(f'{err}\n')
+            builtin_stderr_write(
+                reduce(
+                    lambda acc, x: acc + f'{x}\n',
+                    self.errors,
+                    '\nlogrepl got errors (ignore the duplicated ones):\n'
+                ) + '>>> '
+            )
 
             self.errors = set()
         
@@ -201,15 +202,17 @@ class Handler():
         try:
             self.last_err_time = time.time()
             self.errors.add(err)
-            if self.err_task is None or self.err_task.done():
-                self.err_task = asyncio.create_task(self.show_err())
+            if self.err_thread is None or not self.err_thread.is_alive():
+                thr = Thread(target=self.show_err)
+                thr.start()
+                self.err_thread = thr
         except Exception as e:
             debug_write(str(e))
             builtin_stderr_write(str(e))
     
-    async def exit(self):
-        if not self.err_task is None and not self.err_task.done():
-            await self.err_task
+    def exit(self):
+        if not self.err_thread is None and not self.err_thread.is_alive():
+            self.err_thread.join()
         self.reset_io()
 
     def stop_log(self):
@@ -227,14 +230,15 @@ class Handler():
         sys.stdin = sys.__stdin__
         builtins.input = builtin_input # useless for the running repl!!
     
-@asynccontextmanager
-async def log_handler(
+@contextmanager
+def log_handler(
     log_dir=None,
     prefix=None,
     err_acc_time=None,
 ):
     hd = Handler.from_env(log_dir, prefix, err_acc_time)
+    hd.set_io()
     try:
         yield hd
     finally:
-        await hd.exit()
+        hd.exit()
