@@ -15,11 +15,19 @@ nm_config_prefix = 'prefix'
 nm_config_err_acc_time = 'err_acc_time'
 fname_config = '.pylogrepl'
 default_dir = '.'
+default_err_acc_time = 0.5
+
+is_debug = True
+
+def debug_write(msg):
+    if is_debug:
+        with open('debug.log', 'a') as log:
+            log.write(f'{msg}\n')
 
 # builtin_read = sys.__stdin__.read
 # builtin_readline = sys.__stdin__.readline
 builtin_input = builtins.input
-# builtin_stdout_write = sys.__stdout__.write
+builtin_stdout_write = sys.__stdout__.write
 builtin_stderr_write = sys.__stderr__.write
 
 def gen_log_fname(prefix=None):
@@ -44,7 +52,7 @@ class LogOutWrapper(TextIOWrapper):
 
 class LogInWrapper(TextIOWrapper):
     def __init__(self, ref: TextIOWrapper, decorate):
-        super(LogOutWrapper, self).__init__(
+        super(LogInWrapper, self).__init__(
             ref.buffer,
             encoding=ref.encoding,
             errors=ref.errors,
@@ -61,9 +69,9 @@ class Handler():
 
     def __init__(
         self,
-        log_dir='.',
+        log_dir=default_dir,
         prefix=None,
-        err_acc_time=0.5,
+        err_acc_time=default_err_acc_time,
         will_log=True,
     ):
 
@@ -88,12 +96,18 @@ class Handler():
 
         if log_dir is None and nm_config_dir in config:
             log_dir = config[nm_config_dir]
+        else:
+            log_dir = default_dir
 
         if prefix is None and nm_config_prefix in config:
             prefix = config[nm_config_prefix]
+        else:
+            prefix = None
 
-        if prefix is None and nm_config_err_acc_time in config:
+        if err_acc_time is None and nm_config_err_acc_time in config:
             err_acc_time = config[nm_config_err_acc_time]
+        else:
+            err_acc_time = default_err_acc_time
 
         return cls(log_dir, prefix, err_acc_time, True)
 
@@ -122,7 +136,7 @@ class Handler():
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
                 # breakpoint()
-                # raise Exception('dead!!!!')
+                raise Exception('dead!!!!')
 
     def decorate_log_out(self, fn):
         def new_func(*args, **kwargs):
@@ -165,24 +179,33 @@ class Handler():
         builtins.input = self.gen_logged_input()
 
     async def show_err(self):
+        try:
+            time_diff = time.time() - self.last_err_time
+            debug_write(f'time diff: {time_diff}')
+            while time_diff < self.err_acc_time:
+                await asyncio.sleep(self.err_acc_time)
+                time_diff = time.time() - self.last_err_time
+                debug_write(f'while time diff: {time_diff}')
 
-        while time.time() - self.last_err_time < self.err_acc_time:
-            await asyncio.sleep(self.err_acc_time)
+            builtin_stderr_write('logrepl got errors (ignore the duplicated ones):\n')
+            for err in self.errors:
+                builtin_stderr_write(f'{err}\n')
 
-        builtin_stderr_write('logrepl got errors (ignore the duplicated ones):\n')
-
-        for err in self.errors:
-            builtin_stderr_write(f'{err}\n')
-
-        self.errors = set()
+            self.errors = set()
+        
+        except Exception as e:
+            debug_write(str(e))
+            builtin_stderr_write(str(e))
 
     def add_err(self, err):
-
-        self.last_err_time = time.time()
-        self.errors.add(err)
-
-        if self.err_task is None or self.err_task.done():
-            self.err_task = asyncio.create_task(self.show_err())
+        try:
+            self.last_err_time = time.time()
+            self.errors.add(err)
+            if self.err_task is None or self.err_task.done():
+                self.err_task = asyncio.create_task(self.show_err())
+        except Exception as e:
+            debug_write(str(e))
+            builtin_stderr_write(str(e))
     
     async def exit(self):
         if not self.err_task is None and not self.err_task.done():
@@ -197,6 +220,7 @@ class Handler():
         self.set_will_log(True)
         print('logrepl start log to file.')
 
+    @staticmethod
     def reset_io():
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
@@ -208,9 +232,8 @@ async def log_handler(
     log_dir=None,
     prefix=None,
     err_acc_time=None,
-    will_log=True,
 ):
-    hd = Handler.from_env(log_dir, prefix, err_acc_time, will_log)
+    hd = Handler.from_env(log_dir, prefix, err_acc_time)
     try:
         yield hd
     finally:
