@@ -122,14 +122,29 @@ class Handler():
         return cls(log_dir, prefix, err_acc_time, True)
 
     def set_dir(self, log_dir):
+        """
+        Update new logging dir.
+        log_dir must be string or Path.
+        The suffix _yyyymmddhhmm.log will also be updated.
+        """
         self.log_dir = Path(log_dir)
         self.update_suffix(self)
 
     def set_prefix(self, prefix):
+        """
+        Update new prefix for the log file.
+        `prefix` sholud be `str` or `None`.
+        The suffix `_yyyymmddhhmm.log` will also be updated
+        while the `log_dir` will remain unchanged.
+        Drop the prefix of new log file by setting `prefix` as `None`.
+        """
         self.prefix = prefix
         self.update_suffix()
 
     def update_suffix(self):
+        """
+        Update the timestamp suffix with `log_dir` & `prefix` unchanged.
+        """
         self.log_file = gen_log_fname(self.prefix)
 
     def set_will_log(self, log_or_not):
