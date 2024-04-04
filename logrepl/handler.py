@@ -10,6 +10,7 @@ from io import TextIOWrapper
 from threading import Thread
 from dotenv import dotenv_values
 from functools import reduce
+from queue import Queue
 
 nm_config_dir = 'dir'
 nm_config_prefix = 'prefix'
@@ -17,6 +18,7 @@ nm_config_err_acc_time = 'err_acc_time'
 fname_config = '.pylogrepl'
 default_dir = '.'
 default_err_acc_time = 1.
+default_will_log = True
 
 is_debug = False
 
@@ -66,6 +68,15 @@ class LogInWrapper(TextIOWrapper):
         self.read = decorate(self.read_fn)
         self.readline = decorate(self.readline_fn)
 
+def arg_config_default(arg, dict_config, nm_config, default):
+    if arg is None:
+        if nm_config in dict_config:
+            return dict_config[nm_config]
+        else:
+            return default
+    else:
+        return arg
+
 class Handler():
 
     def __init__(
@@ -73,7 +84,7 @@ class Handler():
         log_dir=default_dir,
         prefix=None,
         err_acc_time=default_err_acc_time,
-        will_log=True,
+        will_log=default_will_log,
     ):
 
         self.log_dir = Path(log_dir)
@@ -83,7 +94,7 @@ class Handler():
 
         self.err_acc_time = err_acc_time
         self.last_err_time = None
-        self.errors = set()
+        self.errors = Queue()
         self.err_thread = None
 
     @classmethod
@@ -95,20 +106,14 @@ class Handler():
     ):
         config = dotenv_values(fname_config)
 
-        if log_dir is None and nm_config_dir in config:
-            log_dir = config[nm_config_dir]
-        else:
-            log_dir = default_dir
-
-        if prefix is None and nm_config_prefix in config:
-            prefix = config[nm_config_prefix]
-        else:
-            prefix = None
-
-        if err_acc_time is None and nm_config_err_acc_time in config:
-            err_acc_time = config[nm_config_err_acc_time]
-        else:
-            err_acc_time = default_err_acc_time
+        log_dir = arg_config_default(log_dir, config, nm_config_dir, default_dir)
+        prefix = arg_config_default(prefix, config, nm_config_prefix, None)
+        err_acc_time = arg_config_default(
+            err_acc_time,
+            config,
+            nm_config_err_acc_time,
+            default_err_acc_time
+        )
 
         return cls(log_dir, prefix, err_acc_time, True)
 
@@ -133,6 +138,7 @@ class Handler():
     
     def check_dir_write(self, msg):
         if self.will_log:
+            # raise Exception(f'dead {self.errors.qsize() % 2}') # for debug
             self.log_dir.mkdir(exist_ok=True, parents=True)
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
@@ -183,16 +189,18 @@ class Handler():
             while time_diff < self.err_acc_time:
                 time.sleep(self.err_acc_time)
                 time_diff = time.time() - self.last_err_time
+            
+            set_errs = set()
+            while not self.errors.empty():
+                set_errs.add(str(self.errors.get(block=False)))
 
             builtin_stderr_write(
                 reduce(
                     lambda acc, x: acc + f'{x}\n',
-                    self.errors,
+                    set_errs,
                     '\nlogrepl got errors (ignore the duplicated ones):\n'
                 ) + '>>> '
             )
-
-            self.errors = set()
         
         except Exception as e:
             debug_write(str(e))
@@ -201,7 +209,7 @@ class Handler():
     def add_err(self, err):
         try:
             self.last_err_time = time.time()
-            self.errors.add(err)
+            self.errors.put(err)
             if self.err_thread is None or not self.err_thread.is_alive():
                 thr = Thread(target=self.show_err)
                 thr.start()
