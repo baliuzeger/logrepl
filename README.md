@@ -13,7 +13,8 @@ then the whole repl will be logged to the file `yyyymmddhhmm.log`.
 
 You can also use `logrepl` to log the whole stream io of a program by:
 
-```
+```python
+import logrepl
 with logrepl.log_handler(
     log_dir,
     prefix,
