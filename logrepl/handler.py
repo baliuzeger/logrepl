@@ -68,10 +68,10 @@ class LogInWrapper(TextIOWrapper):
         self.read = decorate(self.read_fn)
         self.readline = decorate(self.readline_fn)
 
-def arg_config_default(arg, dict_config, nm_config, default):
+def arg_config_default(arg, dict_config, nm_config, default, type_fn):
     if arg is None:
         if nm_config in dict_config:
-            return dict_config[nm_config]
+            return type_fn(dict_config[nm_config])
         else:
             return default
     else:
@@ -106,13 +106,17 @@ class Handler():
     ):
         config = dotenv_values(fname_config)
 
-        log_dir = arg_config_default(log_dir, config, nm_config_dir, default_dir)
-        prefix = arg_config_default(prefix, config, nm_config_prefix, None)
+        log_dir = arg_config_default(log_dir, config, nm_config_dir, default_dir, str)
+
+        if prefix is None and nm_config_prefix in config:
+            prefix = str(config[nm_config_prefix])
+
         err_acc_time = arg_config_default(
             err_acc_time,
             config,
             nm_config_err_acc_time,
-            default_err_acc_time
+            default_err_acc_time,
+            float
         )
 
         return cls(log_dir, prefix, err_acc_time, True)
