@@ -97,9 +97,11 @@ stop logging to the file.
 ## handle sys.stdin/stdout/stderr & builtins.input
 
 **logrepl.Handler.set_io()**
+
 To log **everything** of the repl, *logrepl* modifies sys.stdin/stdout/stderr & builtins.input by this method.
 
 **logrepl.Handler.reset_io()**
+
 Reset sys.stdin/stdout/stderr & builtins.input as-is. The repl will still log input into the file after executing `reset_io`.
 
 # Notes
