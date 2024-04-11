@@ -95,21 +95,21 @@ Update the timestamp suffix with `log_dir` & `prefix` unchanged.
 
 **logrepl.Handler.start_log()**
 
-start logging to the file.
+Start logging to the file.
 
 **logrepl.Handler.stop_log()**
 
-stop logging to the file.
+Stop logging to the file.
 
 ## handle sys.stdin/stdout/stderr & builtins.input
 
 **logrepl.Handler.set_io()**
 
-To log **everything** of the repl, `logrepl` modifies sys.stdin/stdout/stderr & builtins.input by this method.
+To log **everything** of the repl, `logrepl` modifies `sys.stdin/stdout/stderr` & `builtins.input` by this method.
 
 **logrepl.Handler.reset_io()**
 
-Reset sys.stdin/stdout/stderr & builtins.input as-is. The repl will still log input of the repl into the file after executing `reset_io`.
+Reset `sys.stdin/stdout/stderr` & `builtins.input` as-is. The input to the repl wil stil be logged into the file after executing `reset_io`.
 
 # Notes
 
