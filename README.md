@@ -20,9 +20,12 @@ with logrepl.log_handler(
     prefix,
     err_acc_time
 ) as logrepl_handler:
+    # import modules and packages
     # run your program here
     # ...
 ```
+
+Beware that you have to import all the modules and packages in the `with` clause. If a logger of some module or package is initialized before the `with` clause, `logrepl` cannot modify its `logging.StreamHandler`, then all the iniformation directed to that `StreamHandler` will not be logged.
 
 # Config
 
