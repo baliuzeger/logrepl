@@ -228,7 +228,7 @@ class Handler():
                 lambda acc, x: acc + f'{x}\n',
                 set_errs,
                 '\nlogrepl got errors (ignore the duplicated ones):\n'
-            ) + '>>> '
+            ) + '\n'
 
             if self.is_repl:
                 msg += '>>> '
@@ -252,10 +252,10 @@ class Handler():
             builtin_stderr_write(str(e))
     
     def exit(self):
-        if not self.err_thread is None and not self.err_thread.is_alive():
+        if not self.err_thread is None and self.err_thread.is_alive():
             self.is_repl = False
             self.err_thread.join()
-            builtin_stderr_write('exit join done.')
+            # builtin_stderr_write('exit join done.')
         self.reset_io()
 
     def stop_log(self):
