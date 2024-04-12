@@ -90,6 +90,7 @@ class Handler():
         prefix=None,
         err_acc_time=default_err_acc_time,
         will_log=default_will_log,
+        is_repl=False
     ):
 
         self.log_dir = Path(log_dir)
@@ -101,6 +102,7 @@ class Handler():
         self.last_err_time = None
         self.errors = Queue()
         self.err_thread = None
+        self.is_repl = is_repl
 
     @classmethod
     def from_env(
@@ -108,6 +110,7 @@ class Handler():
         log_dir=None,
         prefix=None,
         err_acc_time=None,
+        is_repl=None,
     ):
         config = dotenv_values(fname_config)
 
@@ -124,7 +127,10 @@ class Handler():
             float
         )
 
-        return cls(log_dir, prefix, err_acc_time, True)
+        if is_repl is None:
+            is_repl = False
+
+        return cls(log_dir, prefix, err_acc_time, True, is_repl)
 
     def set_dir(self, log_dir):
         """
@@ -162,7 +168,7 @@ class Handler():
     
     def check_dir_write(self, msg):
         if self.will_log:
-            # raise Exception(f'dead {self.errors.qsize() % 2}') # for debug
+            raise Exception(f'dead {self.errors.qsize() % 2}') # for debug
             self.log_dir.mkdir(exist_ok=True, parents=True)
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
@@ -218,13 +224,16 @@ class Handler():
             while not self.errors.empty():
                 set_errs.add(str(self.errors.get(block=False)))
 
-            builtin_stderr_write(
-                reduce(
-                    lambda acc, x: acc + f'{x}\n',
-                    set_errs,
-                    '\nlogrepl got errors (ignore the duplicated ones):\n'
-                ) + '>>> '
-            )
+            msg = reduce(
+                lambda acc, x: acc + f'{x}\n',
+                set_errs,
+                '\nlogrepl got errors (ignore the duplicated ones):\n'
+            ) + '>>> '
+
+            if self.is_repl:
+                msg += '>>> '
+
+            builtin_stderr_write(msg)
         
         except Exception as e:
             debug_write(str(e))
@@ -243,8 +252,10 @@ class Handler():
             builtin_stderr_write(str(e))
     
     def exit(self):
-        if not self.err_thread is None and self.err_thread.is_alive():
+        if not self.err_thread is None and not self.err_thread.is_alive():
+            self.is_repl = False
             self.err_thread.join()
+            builtin_stderr_write('exit join done.')
         self.reset_io()
 
     def stop_log(self):
@@ -269,8 +280,9 @@ def log_handler(
     log_dir=None,
     prefix=None,
     err_acc_time=None,
+    is_repl=False
 ):
-    hd = Handler.from_env(log_dir, prefix, err_acc_time)
+    hd = Handler.from_env(log_dir, prefix, err_acc_time, is_repl)
     hd.set_io()
     try:
         yield hd

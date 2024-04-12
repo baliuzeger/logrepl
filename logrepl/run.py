@@ -12,7 +12,8 @@ def main():
     with logrepl.log_handler(
         args.dir,
         args.prefix,
-        args.time
+        args.time,
+        True
     ) as logrepl_handler:
         dict_global = globals().copy()
         dict_global['logrepl_handler'] = logrepl_handler
