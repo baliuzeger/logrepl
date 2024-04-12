@@ -238,7 +238,7 @@ class Handler():
             builtin_stderr_write(str(e))
     
     def exit(self):
-        if not self.err_thread is None and not self.err_thread.is_alive():
+        if not self.err_thread is None and self.err_thread.is_alive():
             self.err_thread.join()
         self.reset_io()
 
