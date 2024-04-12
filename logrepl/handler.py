@@ -11,6 +11,7 @@ from threading import Thread
 from dotenv import dotenv_values
 from functools import reduce
 from queue import Queue
+import traceback
 
 nm_config_dir = 'dir'
 nm_config_prefix = 'prefix'
@@ -273,5 +274,12 @@ def log_handler(
     hd.set_io()
     try:
         yield hd
+    except Exception as e:
+        e_str = traceback.format_exc()
+        try:
+            hd.check_dir_write(e_str)
+        except Exception as e1:
+            hd.add_err(e1)
+        raise e
     finally:
         hd.exit()
