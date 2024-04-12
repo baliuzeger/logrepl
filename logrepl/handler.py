@@ -168,7 +168,7 @@ class Handler():
     
     def check_dir_write(self, msg):
         if self.will_log:
-            raise Exception(f'dead {self.errors.qsize() % 2}') # for debug
+            # raise Exception(f'dead {self.errors.qsize() % 2}') # for debug
             self.log_dir.mkdir(exist_ok=True, parents=True)
             with open(self.get_path(), 'a') as log:
                 log.write(msg)
