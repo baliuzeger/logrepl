@@ -52,6 +52,8 @@ class LogOutWrapper(TextIOWrapper):
         )
         self.write_fn = ref.write
         self.write = decorate(self.write_fn)
+    def __del__(self):
+        pass
 
 class LogInWrapper(TextIOWrapper):
     def __init__(self, ref: TextIOWrapper, decorate):
@@ -67,6 +69,8 @@ class LogInWrapper(TextIOWrapper):
         self.readline_fn = ref.readline
         self.read = decorate(self.read_fn)
         self.readline = decorate(self.readline_fn)
+    def __del__(self):
+        pass
 
 def arg_config_default(arg, dict_config, nm_config, default, type_fn):
     if arg is None:
@@ -252,7 +256,9 @@ class Handler():
 
     @staticmethod
     def reset_io():
+        sys.stdout.flush()
         sys.stdout = sys.__stdout__
+        sys.stderr.flush()
         sys.stderr = sys.__stderr__
         sys.stdin = sys.__stdin__
         builtins.input = builtin_input # useless for the running repl!!
