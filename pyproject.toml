@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "logrepl"
-version = "0.2.5"
+version = "0.2.6"
 description = "By this command line tool, you can run a python repl which logs everying into a file."
 authors = ["bali <baluzeger@gmail.com>"]
 readme = "README.md"
