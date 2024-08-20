@@ -18,7 +18,7 @@ import logrepl
 with logrepl.log_handler(
     log_dir,
     prefix,
-    err_acc_time
+    err_acc_time # usually non-necessary
 ) as logrepl_handler:
     # import modules and packages
     # run your program here

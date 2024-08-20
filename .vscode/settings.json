@@ -1,0 +1,24 @@
+{
+    "editor.rulers": [
+        79
+    ],
+    "editor.formatOnSave": true,
+    "black-formatter.args": [
+        "--line-length",
+        "79"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    },
+    "flake8.importStrategy": "useBundled",
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "[sql]": {
+        "editor.defaultFormatter": "ms-mssql.mssql"
+    }
+}

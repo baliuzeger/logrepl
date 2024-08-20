@@ -1,9 +1,9 @@
 from pathlib import Path
 from datetime import datetime
 import sys
-import readline
+
+# import readline
 import builtins
-from pathlib import Path
 import time
 from contextlib import contextmanager
 from io import TextIOWrapper
@@ -13,20 +13,22 @@ from functools import reduce
 from queue import Queue
 import traceback
 
-nm_config_dir = 'dir'
-nm_config_prefix = 'prefix'
-nm_config_err_acc_time = 'err_acc_time'
-fname_config = '.pylogrepl'
-default_dir = '.'
-default_err_acc_time = 1.
+nm_config_dir = "dir"
+nm_config_prefix = "prefix"
+nm_config_err_acc_time = "err_acc_time"
+fname_config = ".pylogrepl"
+default_dir = "."
+default_err_acc_time = 1.0
 default_will_log = True
 
 is_debug = False
 
+
 def debug_write(msg):
     if is_debug:
-        with open('debug.log', 'a') as log:
-            log.write(f'{msg}\n')
+        with open("debug.log", "a") as log:
+            log.write(f"{msg}\n")
+
 
 # builtin_read = sys.__stdin__.read
 # builtin_readline = sys.__stdin__.readline
@@ -34,12 +36,14 @@ builtin_input = builtins.input
 builtin_stdout_write = sys.__stdout__.write
 builtin_stderr_write = sys.__stderr__.write
 
+
 def gen_log_fname(prefix=None):
     t_tag = datetime.now().strftime("%Y%m%d%H%M")
     fname = f"{t_tag}.log"
-    if not prefix is None:
+    if prefix is not None:
         fname = f"{prefix}_{fname}"
     return fname
+
 
 class LogOutWrapper(TextIOWrapper):
     def __init__(self, ref: TextIOWrapper, decorate):
@@ -48,13 +52,15 @@ class LogOutWrapper(TextIOWrapper):
             encoding=ref.encoding,
             errors=ref.errors,
             line_buffering=ref.line_buffering,
-            write_through=ref.write_through
+            write_through=ref.write_through,
             # newline use default
         )
         self.write_fn = ref.write
         self.write = decorate(self.write_fn)
+
     def __del__(self):
         pass
+
 
 class LogInWrapper(TextIOWrapper):
     def __init__(self, ref: TextIOWrapper, decorate):
@@ -63,15 +69,17 @@ class LogInWrapper(TextIOWrapper):
             encoding=ref.encoding,
             errors=ref.errors,
             line_buffering=ref.line_buffering,
-            write_through=ref.write_through
+            write_through=ref.write_through,
             # newline use default
         )
         self.read_fn = ref.read
         self.readline_fn = ref.readline
         self.read = decorate(self.read_fn)
         self.readline = decorate(self.readline_fn)
+
     def __del__(self):
         pass
+
 
 def arg_config_default(arg, dict_config, nm_config, default, type_fn):
     if arg is None:
@@ -82,7 +90,8 @@ def arg_config_default(arg, dict_config, nm_config, default, type_fn):
     else:
         return arg
 
-class Handler():
+
+class Handler:
 
     def __init__(
         self,
@@ -90,7 +99,7 @@ class Handler():
         prefix=None,
         err_acc_time=default_err_acc_time,
         will_log=default_will_log,
-        is_repl=False
+        is_repl=False,
     ):
 
         self.log_dir = Path(log_dir)
@@ -114,7 +123,9 @@ class Handler():
     ):
         config = dotenv_values(fname_config)
 
-        log_dir = arg_config_default(log_dir, config, nm_config_dir, default_dir, str)
+        log_dir = arg_config_default(
+            log_dir, config, nm_config_dir, default_dir, str
+        )
 
         if prefix is None and nm_config_prefix in config:
             prefix = str(config[nm_config_prefix])
@@ -124,7 +135,7 @@ class Handler():
             config,
             nm_config_err_acc_time,
             default_err_acc_time,
-            float
+            float,
         )
 
         if is_repl is None:
@@ -160,17 +171,17 @@ class Handler():
 
     def set_will_log(self, log_or_not):
         self.will_log = log_or_not
-    
+
     def get_path(self):
         if self.log_file is None:
-            raise ValueError('logrepl log_file is None.')
-        return self.log_dir/self.log_file
-    
+            raise ValueError("logrepl log_file is None.")
+        return self.log_dir / self.log_file
+
     def check_dir_write(self, msg):
         if self.will_log:
             # raise Exception(f'dead {self.errors.qsize() % 2}') # for debug
             self.log_dir.mkdir(exist_ok=True, parents=True)
-            with open(self.get_path(), 'a') as log:
+            with open(self.get_path(), "a") as log:
                 log.write(msg)
 
     def decorate_log_out(self, fn):
@@ -181,6 +192,7 @@ class Handler():
                 self.add_err(str(e))
             finally:
                 return fn(*args, **kwargs)
+
         return new_func
 
     def decorate_log_in(self, fn):
@@ -192,19 +204,20 @@ class Handler():
                 self.add_err(str(e))
             finally:
                 return s
+
         return new_func
 
     def gen_logged_input(self):
 
-        def logged_input(prompt=''):
+        def logged_input(prompt=""):
             got = builtin_input(prompt)
             try:
-                self.check_dir_write(f'{prompt}{got}\n')
+                self.check_dir_write(f"{prompt}{got}\n")
             except Exception as e:
                 self.add_err(str(e))
             finally:
                 return got
-        
+
         return logged_input
 
     def set_io(self):
@@ -219,22 +232,25 @@ class Handler():
             while time_diff < self.err_acc_time:
                 time.sleep(self.err_acc_time)
                 time_diff = time.time() - self.last_err_time
-            
+
             set_errs = set()
             while not self.errors.empty():
                 set_errs.add(str(self.errors.get(block=False)))
 
-            msg = reduce(
-                lambda acc, x: acc + f'{x}\n',
-                set_errs,
-                '\nlogrepl got errors (ignore the duplicated ones):\n'
-            ) + '\n'
+            msg = (
+                reduce(
+                    lambda acc, x: acc + f"{x}\n",
+                    set_errs,
+                    "\nlogrepl got errors (ignore the duplicated ones):\n",
+                )
+                + "\n"
+            )
 
             if self.is_repl:
-                msg += '>>> '
+                msg += ">>> "
 
             builtin_stderr_write(msg)
-        
+
         except Exception as e:
             debug_write(str(e))
             builtin_stderr_write(str(e))
@@ -250,21 +266,21 @@ class Handler():
         except Exception as e:
             debug_write(str(e))
             builtin_stderr_write(str(e))
-    
+
     def exit(self):
-        if not self.err_thread is None and self.err_thread.is_alive():
+        if self.err_thread is not None and self.err_thread.is_alive():
             self.is_repl = False
             self.err_thread.join()
             # builtin_stderr_write('exit join done.')
         self.reset_io()
 
     def stop_log(self):
-        print('logrepl stopped log to file.')
+        print("logrepl stopped log to file.")
         self.set_will_log(False)
 
     def start_log(self):
         self.set_will_log(True)
-        print('logrepl start log to file.')
+        print("logrepl start log to file.")
 
     @staticmethod
     def reset_io():
@@ -273,15 +289,11 @@ class Handler():
         sys.stderr.flush()
         sys.stderr = sys.__stderr__
         sys.stdin = sys.__stdin__
-        builtins.input = builtin_input # useless for the running repl!!
-    
+        builtins.input = builtin_input  # useless for the running repl!!
+
+
 @contextmanager
-def log_handler(
-    log_dir=None,
-    prefix=None,
-    err_acc_time=None,
-    is_repl=False
-):
+def log_handler(log_dir=None, prefix=None, err_acc_time=None, is_repl=False):
     hd = Handler.from_env(log_dir, prefix, err_acc_time, is_repl)
     hd.set_io()
     try:
